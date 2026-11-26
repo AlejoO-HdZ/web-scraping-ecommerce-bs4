@@ -62,6 +62,45 @@ El proceso general de instalación y configuración del proyecto consta de las s
 * **4. Repositorio Remoto y Sincronización:** Consolidación y envío de los cambios mediante *commits* y *push* hacia la rama principal (`origin/main`) en GitHub utilizando autenticación segura.
 * **5. Integración Continua y Despliegue futura (Fase 3):** Ejecución automática de validaciones, pruebas de infraestructura y gestión de artefactos a través del archivo de automatización ubicado en `.github/workflows/main.yml`.
 
+---
+
+# EA3 - Etapa Final - Automatizado y Presentacion del Web Scrapping - Tiendas Branchos
+
+Pipeline de **Web Scraping, Analítica de Precios e Integración Continua (CI/CD)** construido en Python 3.13 y automatizado con **GitHub Actions** para rastrear el catálogo de camisetas para mujer en Tiendas Branchos, detectar variaciones de precios y publicar un tablero analítico estático (`index.html`).
+
+## Estructura Final del Proyecto
+
+| Archivo / Carpeta | Descripción |
+| :--- | :--- |
+| `EA2_Analizando-Integracion-Scrapping-Github.ipynb` | Cuaderno principal con el flujo de extracción, limpieza, comparación histórica y generación del reporte HTML. |
+| `EA2_camisetas_mujeres_analytics.csv` | Dataset procesado de la ejecución más reciente. |
+| `EA2_camisetas_mujeres_anterior.csv` | Respaldo histórico utilizado para calcular productos nuevos, faltantes y movimientos de precios. |
+| `index.html` | Reporte visual interactivo con métricas comparativas, gráficos, marca líder, variaciones de precio por MPN y buscador. |
+| `tests/test_webscrapping.py` | Suite de pruebas automatizadas con `pytest` para validar calidad de datos y estructura de salida. |
+| `requirements.txt` | Dependencias de Python necesarias para ejecutar el pipeline. |
+| `.github/workflows/main.yml` | Definición del flujo de CI/CD en GitHub Actions. |
+| `.gitignore` | Reglas de exclusión para evitar versionar datos crudos (`ea1_...csv`) y artefactos temporales. |
+
+## Funcionamiento del Pipeline CI/CD
+
+El flujo de trabajo definido en `.github/workflows/main.yml` se ejecuta bajo tres modalidades:
+1. **Integración Continua (`push` a `main`):** Se activa automáticamente ante cambios en el código o pruebas, ignorando modificaciones exclusivas en `index.html` y los archivos `.csv` (`paths-ignore`) para evitar bucles de ejecución.
+2. **Ejecución Programada (`schedule`):** Corre todos los domingos a las **12:00 UTC (07:00 AM hora Colombia)**.
+3. **Ejecución Manual (`workflow_dispatch`):** Puede lanzarse bajo demanda desde la pestaña **Actions > Run workflow** en GitHub.
+
+### Etapas de ejecución
+1. Configura un entorno limpio en `ubuntu-latest` con **Python 3.13**.
+2. Instala dependencias desde `requirements.txt`.
+3. Ejecuta el cuaderno mediante `jupyter nbconvert` generando una copia temporal (`EA2_ejecutado.ipynb`) sin alterar el cuaderno original.
+4. Corre las pruebas de calidad (`pytest -v tests/test_webscrapping.py`). Si alguna prueba falla, el pipeline se detiene y no publica datos corruptos.
+5. Verifica si hubo cambios en `Melo_Luis_EA2_camisetas_mujeres_analytics.csv`, `Melo_Luis_EA2_camisetas_mujeres_anterior.csv` o `index.html`; de existir cambios, registra un commit automático firmado por `github-actions[bot]`.
+
+## Presentacion de Resultados Finales - Reporte en vivo (GitHub Pages)
+
+Consultar el dashboard comparativo actualizado automáticamente aquí: 
+- [Ver reporte en GitHub Pages] Visit site: https://alejoo-hdz.github.io/web-scraping-ecommerce-bs4/
+
+
 ### Autor y Proposito
 
 Proyecto desarrollado como práctica académica y se realiza exclusivamente con fines académicos e investigativos bajo los lineamientos institucionales y metodológicos establecidos, garantizando la transparencia, reproducibilidad y buenas prácticas en la ingeniería de software y análisis de datos.
