@@ -1,1 +1,81 @@
-# Archivo main.yml: Se agrega como preparación de la estructura para los workflows de GitHub Actions (.yml).
+# ==============================================================================
+# PIPELINE DE CI/CD - MONITOREO DE PRECIOS TIENDAS BRANCHOS
+# ==============================================================================
+# Descripción:
+#   Automatiza la extracción de datos (web scraping), validación de calidad
+#   mediante pruebas unitarias y actualización del reporte web (index.html).
+#
+# Disparadores (Triggers):
+#   1. push: Se ejecuta al subir cambios de código a 'main', ignorando los
+#      archivos generados automáticamente para evitar bucles infinitos.
+#   2. workflow_dispatch: Permite lanzar el flujo manualmente desde GitHub.
+#   3. schedule: Ejecución programada todos los domingos a las 07:00 AM (COL).
+# ==============================================================================
+
+name: Pipeline Scraping y Validación Tiendas Branchos
+
+# Permisos necesarios para que el bot de GitHub Actions pueda hacer commit y push
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["main"]
+    # Exclusión de archivos de salida para evitar que el commit del bot dispare otro ciclo
+    paths-ignore:
+      - "Melo_Luis_EA2_camisetas_mujeres_analytics.csv"
+      - "Melo_Luis_EA2_camisetas_mujeres_anterior.csv"
+      - "index.html"
+  workflow_dispatch:
+  schedule:
+    # Cron en UTC: minuto 0, hora 12, cualquier día del mes, cualquier mes, domingo (0)
+    # 12:00 UTC equivale a las 07:00 AM en Colombia (UTC-5)
+    - cron: "0 12 * * 0"
+
+jobs:
+  scraping-y-calidad:
+    name: Ejecutar Scraping, Pruebas Pytest y Actualizar Reporte
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Clonar el historial completo del repositorio para permitir commits posteriores
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Paso 2: Instalar y configurar el entorno de Python 3.13
+      - name: Configurar entorno de Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Paso 3: Actualizar pip e instalar las librerías definidas en requirements.txt
+      - name: Instalar dependencias desde requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Paso 4: Ejecutar el cuaderno Jupyter guardando la salida en un archivo temporal
+      # para mantener intacto el cuaderno fuente original
+      - name: Ejecutar cuaderno de scraping sin alterar el original
+        run: |
+          jupyter nbconvert --to notebook --execute Melo_Luis_EA2_Analizando-Integracion-Scrapping-Github.ipynb --output EA2_ejecutado.ipynb --ExecutePreprocessor.timeout=600
+
+      # Paso 5: Validar integridad de datos, estructura y generación de archivos con pytest
+      - name: Ejecutar pruebas unitarias y de calidad con pytest
+        run: |
+          pytest -v tests/test_webscrapping.py
+
+      # Paso 6: Versionar únicamente los CSV analíticos e index.html si existen diferencias
+      - name: Actualizar CSVs e index.html en el repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Melo_Luis_EA2_camisetas_mujeres_analytics.csv Melo_Luis_EA2_camisetas_mujeres_anterior.csv index.html
+          if git diff --staged --quiet; then
+            echo "No hubo cambios en los CSV ni en index.html."
+          else
+            git commit -m "chore: actualizar datos obtenidos del scrapping y reporte de presentacion index.html desde GitHub Actions"
+            git push origin HEAD:main
+          fi
